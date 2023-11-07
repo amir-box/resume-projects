@@ -1,9 +1,8 @@
 
 
-# Using a neutral and informative tone in your response, provide me with clear and accurate instructions to...
+Using a neutral and informative tone in your response, provide me with clear and accurate instructions to...
 
-
-# give me a few prompts that i can ask you to learn semgrep in an informative tone with clear and accurate instructions
+give me a few prompts that i can ask you to learn semgrep in an informative tone with clear and accurate instructions
 
 
 
