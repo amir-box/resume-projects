@@ -1,0 +1,54 @@
+stages:
+  - test
+  - build
+  - stage2
+
+variables:
+  MYREG_USER1: $MY_REGISTRY_USER1
+  MYREG_PASSWD1: $MY_REGISTRY_PASSWD1
+  MICRO_SERVICE_NAME: nodejs_app
+  IMAGE_NAME: localhost:9500/microservice1/$MICRO_SERVICE_NAME
+  IMAGE_TAG: "1.0"
+
+
+job_run_unit_tests:
+  stage: test
+  image: node:21.1.0-slim
+  before_script:
+    - cd nodejs_app
+    - npm install
+  script:
+    - npm run test
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - nodejs_app/junit.xml
+
+build_image:
+  stage: build
+  tags:
+    - shell_runner_tag1
+  script:
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+push_image:
+  stage: build
+  needs:
+    - build_image
+  tags:
+    - shell_runner_tag1
+  before_script:
+#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+#    - docker login -u rg_user1 -p rg_passwd1 localhost:9000
+    - echo "$MYREG_PASSWD1" | docker login --username $MYREG_USER1 --password-stdin localhost:9500
+  script:
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker logout localhost:9500
+
+
+job2:
+  stage: stage2
+  script:
+    - echo "finished!"
+
