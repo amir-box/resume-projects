@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-app
+  namespace: argocd
+spec:
+  project: default
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ns4 #default # change the namespace
+  sources:
+    - repoURL: http://gitlab-container/root/manifests.git # git@gitlab-container:root/manifests.git
+      targetRevision: HEAD
+      path: folder1/nginx-chart
+      helm:
+        valueFiles:
+          - values.yaml
+    - repoURL: git@gitlab-container:root/manifests.git
+      targetRevision: HEAD
+      path: folder1
+
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+
+    automated:
+      prune: true
+      selfHeal: true
+
