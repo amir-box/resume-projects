@@ -1,0 +1,100 @@
+stages:
+  - stage-secret-scan
+  - stage-sast
+  - stage-sca
+  - stage-container-scan
+  - stage-cvm
+
+
+job-trufflehog:
+  stage: stage-secret-scan
+  image: 
+    name: trufflesecurity/trufflehog:3.59.0-amd64
+    entrypoint: [""]
+  script:
+    - trufflehog --no-update --fail --json git file://. > trufflehog.json
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - trufflehog.json
+
+job-gitleaks:
+  stage: stage-secret-scan
+  image: 
+    name: zricethezav/gitleaks:v8.18.0
+    entrypoint: [""]
+  script:
+    - gitleaks detect --report-format="json" --source . --report-path="gitleaks.json"
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - gitleaks.json
+
+
+job-njsscan:
+  stage: stage-sast
+  image:
+    name: opensecurity/njsscan:0.3.6
+    entrypoint: [""]
+  script:
+    - njsscan --exit-warning . --sarif -o njsscan.sarif
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - njsscan.sarif
+
+job-semgrep:
+  stage: stage-sast
+  image: returntocorp/semgrep:1.50.0
+  variables:
+    SEMGREP_RULES: p/javascript
+  script:
+    - semgrep ci --json --output semgrep.json
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - semgrep.json
+
+
+job-retirejs:
+  stage: stage-sca
+  image: amir/retirejs:v4.3.4
+  script:
+    - retire --path . --outputformat json --outputpath retire.json
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - retire.json
+
+
+job-trivy:
+  stage: stage-container-scan
+  tags:
+    - shell_runner_tag1
+  when: always
+  script:
+    - trivy --version
+    - trivy image -f json -o trivy.json --severity HIGH,CRITICAL --exit-code --skip-db-update 1 bkimminich/juice-shop:v15.3.0
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - trivy.json
+
+
+job-defectdojo:
+  stage: stage-cvm
+  image: amir/requests:v2.31.0
+  when: always
+  script:
+    - python3 upload-reports.py gitleaks.json
+    - python3 upload-reports.py trufflehog.json
+    - python3 upload-reports.py njsscan.sarif
+    - python3 upload-reports.py semgrep.json
+    - python3 upload-reports.py retire.json
+
