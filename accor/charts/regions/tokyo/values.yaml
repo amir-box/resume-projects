@@ -1,0 +1,6 @@
+region: us-east-1
+
+image:
+  tag: v1.0.1
+
+replicaCount: 3

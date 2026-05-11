@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: myapp
+spec:
+  replicas: {{ .Values.replicaCount }}
+strategy:
+  canary:
+    stableService: myapp-active
+    canaryService: myapp-preview
+
+    dynamicStableScale: true
+    abortScaleDownDelaySeconds: 30
+
+    steps:
+      - setWeight: 10
+
+      - pause:
+          duration: 1m
+
+      - setWeight: 25
+
+      - pause:
+          duration: 2m
+
+      - setWeight: 50
+
+      - pause:
+          duration: 5m
+
+      - setWeight: 100
+
+  selector:
+    matchLabels:
+      app: myapp
+
+  template:
+    metadata:
+      labels:
+        app: myapp
+        region: {{ .Values.region }}
+
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.targetPort }}"
+        prometheus.io/path: "/metrics"
+
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+
+          labelSelector:
+            matchLabels:
+              app: myapp
+      containers:
+        - name: myapp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          ports:
+            - containerPort: 80
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+            limits:
+              cpu: 500m
+              memory: 512Mi

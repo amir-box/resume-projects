@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: adot-config
+  namespace: monitoring
+
+data:
+  adot-collector-config: |
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+
+            - job_name: kubernetes-pods
+
+              kubernetes_sd_configs:
+                - role: pod
+
+    exporters:
+      prometheusremotewrite:
+        endpoint: "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-12345678-abcd-efgh/api/v1/remote_write"
+
+        auth:
+          authenticator: sigv4auth
+
+    extensions:
+      sigv4auth:
+        region: us-east-1
+        service: aps
+
+    service:
+      extensions: [sigv4auth]
+
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          exporters: [prometheusremotewrite]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: adot-collector
+  namespace: monitoring
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: adot-collector
+
+  template:
+
+    metadata:
+      labels:
+        app: adot-collector
+
+    spec:
+
+      serviceAccountName: adot-collector
+
+      containers:
+
+        - name: adot-collector
+
+          image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+
+          args:
+            - --config=/conf/adot-collector-config.yaml
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /conf
+
+      volumes:
+        - name: config-volume
+
+          configMap:
+            name: adot-collector-config
+
+            items:
+              - key: adot-collector-config
+                path: adot-collector-config.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+
+metadata:
+  name: adot-collector
+  namespace: monitoring
+
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/adot-amp-role

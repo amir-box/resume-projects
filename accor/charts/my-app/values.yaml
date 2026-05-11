@@ -1,0 +1,47 @@
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: latest
+
+region: default
+
+service:
+  port: 80
+
+
+ingress:
+  enabled: true
+
+  className: alb
+
+  scheme: internet-facing
+
+  host: myapp.example.com
+
+  certificateArn: arn:aws:acm:us-east-1:123456789012:certificate/abcd-1234
+
+
+rollout:
+  steps:
+    - setWeight: 20
+    - pause:
+        duration: 30s
+    - setWeight: 50
+    - pause:
+        duration: 60s
+    - setWeight: 100
+
+hpa:
+  enabled: true
+
+  minReplicas: 2
+  maxReplicas: 10
+
+  cpu:
+    enabled: true
+    targetUtilization: 70
+
+  memory:
+    enabled: false
+    targetUtilization: 80
